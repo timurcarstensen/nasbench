@@ -45,12 +45,12 @@ _INTERNAL_TIME_PRECISION = 1000
 
 def _seconds_to_internal_time(seconds):
   """Converts seconds to fixed-precision time."""
-  return tf.to_int64(tf.round(seconds * _INTERNAL_TIME_PRECISION))
+  return tf.cast(tf.round(seconds * _INTERNAL_TIME_PRECISION), tf.int64)
 
 
 def _internal_time_to_seconds(internal_time):
   """Converts fixed-precision time to seconds."""
-  return tf.to_float(internal_time / _INTERNAL_TIME_PRECISION)
+  return tf.cast(internal_time / _INTERNAL_TIME_PRECISION, tf.float32)
 
 
 Timing = collections.namedtuple(  # pylint: disable=g-bad-name
@@ -127,7 +127,7 @@ _TimingVars = collections.namedtuple(  # pylint: disable=g-bad-name
     ])
 
 
-class _TimingRunHook(tf.train.SessionRunHook):
+class _TimingRunHook(tf.compat.v1.train.SessionRunHook):
   """Hook to stop the training after a certain amount of time."""
 
   def __init__(self, max_train_secs=None):
@@ -163,7 +163,7 @@ class _TimingRunHook(tf.train.SessionRunHook):
           _internal_time_to_seconds(self._end_op - self._start_op))
 
   def before_run(self, run_context):
-    return tf.train.SessionRunArgs([self._total_op, self._step_op])
+    return tf.compat.v1.train.SessionRunArgs([self._total_op, self._step_op])
 
   def after_run(self, run_context, run_values):
     total_time, _ = run_values.results
@@ -171,7 +171,7 @@ class _TimingRunHook(tf.train.SessionRunHook):
       run_context.request_stop()
 
 
-class _TimingSaverListener(tf.train.CheckpointSaverListener):
+class _TimingSaverListener(tf.compat.v1.train.CheckpointSaverListener):
   """Saving listener to store the train time up to the last checkpoint save."""
 
   def begin(self):
@@ -199,35 +199,33 @@ def _get_or_create_timing_vars():
   """
   # We always create the timing variables at root_scope / _SCOPE_NAME,
   # regardless of the scope from where this is called.
-  root_scope = tf.get_variable_scope()
-  with tf.variable_scope(root_scope, reuse=tf.AUTO_REUSE):
-    with tf.variable_scope(_SCOPE_NAME, reuse=tf.AUTO_REUSE):
-      start_timestamp = tf.get_variable(
-          _START_VAR,
-          shape=[],
-          dtype=tf.int64,
-          initializer=tf.constant_initializer(-1),
-          trainable=False)
-      steps = tf.get_variable(
-          _STEPS_VAR,
-          shape=[],
-          dtype=tf.int64,
-          initializer=tf.constant_initializer(0),
-          trainable=False)
-      previous_time = tf.get_variable(
-          _PREV_VAR,
-          shape=[],
-          dtype=tf.float32,
-          initializer=tf.constant_initializer(0.0),
-          trainable=False)
-      total_time = tf.get_variable(
-          _TOTAL_VAR,
-          shape=[],
-          dtype=tf.float32,
-          initializer=tf.constant_initializer(0.0),
-          trainable=False)
-      return _TimingVars(
-          start_timestamp=start_timestamp,
-          steps=steps,
-          previous_time=previous_time,
-          total_time=total_time)
+  with tf.compat.v1.variable_scope(_SCOPE_NAME, reuse=tf.compat.v1.AUTO_REUSE):
+    start_timestamp = tf.Variable(
+        initial_value=-1,
+        name=_START_VAR,
+        shape=[],
+        dtype=tf.int64,
+        trainable=False)
+    steps = tf.Variable(
+        initial_value=0,
+        name=_STEPS_VAR,
+        shape=[],
+        dtype=tf.int64,
+        trainable=False)
+    previous_time = tf.Variable(
+        initial_value=0.0,
+        name=_PREV_VAR,
+        shape=[],
+        dtype=tf.float32,
+        trainable=False)
+    total_time = tf.Variable(
+        initial_value=0.0,
+        name=_TOTAL_VAR,
+        shape=[],
+        dtype=tf.float32,
+        trainable=False)
+    return _TimingVars(
+        start_timestamp=start_timestamp,
+        steps=steps,
+        previous_time=previous_time,
+        total_time=total_time)

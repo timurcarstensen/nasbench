@@ -143,10 +143,10 @@ class NASBench(object):
     # {108} for the smaller dataset with only the 108 epochs.
     self.valid_epochs = set()
 
-    for serialized_row in tf.python_io.tf_record_iterator(dataset_file):
+    for serialized_row in tf.data.TFRecordDataset([dataset_file]):
       # Parse the data from the data file.
       module_hash, epochs, raw_adjacency, raw_operations, raw_metrics = (
-          json.loads(serialized_row.decode('utf-8')))
+          json.loads(serialized_row.numpy().decode('utf-8')))
 
       dim = int(np.sqrt(len(raw_adjacency)))
       adjacency = np.array([int(e) for e in list(raw_adjacency)], dtype=np.int8)
@@ -313,7 +313,7 @@ class NASBench(object):
     # However, these are stored in the JSON file at the model_dir.
     metadata = evaluate.train_and_evaluate(model_spec, self.config, model_dir)
     metadata_file = os.path.join(model_dir, 'metadata.json')
-    with tf.gfile.Open(metadata_file, 'w') as f:
+    with tf.io.gfile.GFile(metadata_file, 'w') as f:
       json.dump(metadata, f, cls=_NumpyEncoder)
 
     data_point = {}
@@ -404,5 +404,5 @@ class _NumpyEncoder(json.JSONEncoder):
       return obj.tolist()
     elif isinstance(obj, np.generic):
       # Scalars converted to closest Python type
-      return np.asscalar(obj)
+      return np.asarray(obj).item()
     return json.JSONEncoder.default(self, obj)
