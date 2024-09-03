@@ -27,7 +27,6 @@ import numpy as np
 import tensorflow as tf
 
 VALID_EXCEPTIONS = (
-    tf.compat.v1.estimator.NanLossDuringTrainingError,  # NaN loss
     tf.errors.ResourceExhaustedError,     # OOM
     tf.errors.InvalidArgumentError,       # NaN gradient
     tf.errors.DeadlineExceededError,      # Timed out
